@@ -22,8 +22,10 @@
     "typescript": "^3.9.5"
   },
   "dependencies": {
+    "query-string": "^6.13.1",
     "react": "^16.13.1",
-    "react-dom": "^16.13.1"
+    "react-dom": "^16.13.1",
+    "regenerator-runtime": "^0.13.5"
   },
   "prettier": {
     "singleQuote": true
