@@ -1,0 +1,22 @@
+@import 'hang-tight';
+
+body {
+  text-align: center;
+}
+
+.Result {
+  width: 350px;
+  padding: 25px;
+  box-shadow: 0 0 2px;
+  margin: 25px auto;
+}
+
+.Result__list {
+  width: 350px;
+  margin: 25px auto;
+  text-align: left;
+}
+
+[role='progressbar'] {
+  margin: 20px auto;
+}

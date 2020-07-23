@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import queryString from 'query-string';
 import App from '../components/App';
 
-const BASE_URL = 'https://tidesandcurrents.noaa.gov/api/datagetter';
 const zeroIfy = (n: number) => (`${n}`.length === 2 ? n : `0${n}`);
+const BASE_URL = 'https://tidesandcurrents.noaa.gov/api/datagetter';
 const d = new Date();
 const tomorrow = new Date(d);
+
 tomorrow.setDate(tomorrow.getDate() + 1);
+
 const defaultParams = {
   station: '9410170', // San Diego Bay
   datum: 'MLLW',
@@ -36,16 +38,34 @@ const tempParams = {
   interval: '',
 };
 
-const AppContainer: React.ComponentType = () => {
-  const [stationValue, setStationValue] = useState(tideParams.station);
-  const [error, setError] = useState();
-  const [tideData, setTideData] = useState([]);
-  const [temperatureData, setTemperatureData] = useState();
-  const onStationChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setStationValue(e.target.value);
-  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+const getCachedTideData = () => {
+  const tideData = JSON.parse(localStorage.getItem('tideinfo') || '{}');
+  return tideData.error ? {} : tideData;
+};
 
+// TODO: add "tide data last requested on {TIME_STAMP}"
+const AppContainer: React.ComponentType = () => {
+  const cachedTideData = getCachedTideData();
+  const [stationValue, setStationValue] = useState(
+    cachedTideData.station || tideParams.station
+  );
+  const [error, setError] = useState();
+  const [loading, setLoading] = useState(false);
+  const [tideData, setTideData] = useState(cachedTideData.predictions || []);
+  const [lastRequestAt, setLastRequestAt] = useState(
+    cachedTideData.lastRequestAt || null
+  );
+  const [temperatureData, setTemperatureData] = useState(
+    cachedTideData.temperatureData || null
+  );
+
+  const onStationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStationValue(e.target.value);
+  };
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    setLoading(true);
+    const date = `${new Date()}`;
+    e.preventDefault();
     // fetch the tide data
     const tideRes = await fetch(
       `${BASE_URL}?${queryString.stringify({
@@ -54,8 +74,10 @@ const AppContainer: React.ComponentType = () => {
       })}`
     );
     const tideData = await tideRes.json();
+
     setTideData(tideData.predictions);
     setError(tideData.error ? tideData.error.message : '');
+    setLastRequestAt(date);
 
     // fetch the water temperature data
     const waterTempRes = await fetch(
@@ -64,9 +86,23 @@ const AppContainer: React.ComponentType = () => {
         station: stationValue,
       })}`
     );
-    setTemperatureData(await waterTempRes.json());
+    const tempData = await waterTempRes.json();
+
+    setTemperatureData(tempData);
+    setLoading(false);
+
+    localStorage.setItem(
+      'tideinfo',
+      JSON.stringify({
+        station: stationValue,
+        predictions: tideData.predictions,
+        error,
+        temperatureData: tempData,
+        lastRequestAt: date,
+      })
+    );
   };
-  console.log({ temperatureData });
+
   return (
     <App
       onStationChange={onStationChange}
@@ -74,7 +110,9 @@ const AppContainer: React.ComponentType = () => {
       onSubmit={onSubmit}
       tideData={tideData}
       error={error}
-      temperatureData={temperatureData}
+      temperatureData={!error && temperatureData}
+      lastRequestAt={lastRequestAt}
+      loading={loading}
     />
   );
 };

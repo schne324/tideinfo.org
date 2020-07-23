@@ -1,4 +1,6 @@
 import React from 'react';
+import { Ripple } from 'hang-tight-react';
+import './App.css';
 
 interface TideEntry {
   t: string;
@@ -31,6 +33,8 @@ interface Props {
   tideData: TideEntry[];
   error?: string;
   temperatureData?: WaterTemp;
+  lastRequestAt?: string;
+  loading: boolean;
 }
 
 interface TideDateData {
@@ -60,6 +64,8 @@ const App: React.ComponentType<Props> = ({
   tideData,
   error,
   temperatureData,
+  lastRequestAt,
+  loading,
 }) => {
   const tideDataByDate =
     !!tideData &&
@@ -86,33 +92,42 @@ const App: React.ComponentType<Props> = ({
         />
         <button type="submit">Submit</button>
       </form>
-      {!!temperatureData && (
-        <>
-          <h2>{temperatureData.metadata.name}</h2>
-          <p>Water temperature: {temperatureData.data[0].v}</p>
-        </>
+      {loading ? (
+        <Ripple aria-label="Fetching tide data..." />
+      ) : (
+        <div className="Result">
+          {!!temperatureData && temperatureData.metadata && (
+            <>
+              <h2>{temperatureData.metadata.name}</h2>
+              <p>Water temperature: {temperatureData.data[0].v}</p>
+            </>
+          )}
+          {tideDataByDate && (
+            <ul className="Result__list">
+              {Object.entries(tideDataByDate).map(([date, data]) => {
+                const d = new Date(date);
+                return (
+                  <li key={date}>
+                    <div>
+                      {d.getMonth()}-{d.getDate()}-{d.getFullYear()}
+                    </div>
+                    <ul>
+                      {Object.entries(data).map(([time, tideInfo]) => (
+                        <li key={`${date}${time}`}>
+                          {tideInfo.type === 'H' ? 'High' : 'Low'}:{' '}
+                          {get12HourTime(time)} ({tideInfo.level})
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {error && <p>Error: {error}</p>}
+          {lastRequestAt && <em>Last request made: {lastRequestAt}</em>}
+        </div>
       )}
-      {tideDataByDate && (
-        <ul>
-          {Object.entries(tideDataByDate).map(([date, data]) => {
-            return (
-              <li key={date}>
-                <div>{date}</div>
-                <ul>
-                  {Object.entries(data).map(([time, tideInfo]) => (
-                    <li key={`${date}${time}`}>
-                      <div>{tideInfo.type === 'H' ? 'High' : 'Low'}</div>
-                      <div>{get12HourTime(time)}</div>
-                      <div>{tideInfo.level}</div>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {error && <p>Some shit went wrong: {error}</p>}
     </main>
   );
 };
